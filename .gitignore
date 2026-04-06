@@ -1,2 +1,11 @@
 __pycache__/
 .venv/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Python cache artifacts
+*.pyc
+*.pyo

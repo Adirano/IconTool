@@ -63,9 +63,33 @@ class MainWindow(tk.Tk):
         content = tk.Frame(self)
         content.pack(fill=tk.BOTH, expand=True)
 
+        # 左侧容器（画布 + 底部状态栏）
+        left_panel = tk.Frame(content)
+        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
         # 左侧画布（可伸缩）
-        self._canvas = ImageCanvas(content, on_selection_callback=self._on_selection)
-        self._canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self._canvas = ImageCanvas(
+            left_panel,
+            on_selection_callback=self._on_selection,
+            on_view_changed_callback=self._on_view_changed,
+        )
+        self._canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # 图片信息栏：分辨率 + 缩放比例
+        status_bar = tk.Frame(left_panel, bg="#f0f0f0", height=28, bd=1, relief=tk.SOLID)
+        status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        status_bar.pack_propagate(False)
+
+        self._view_info_var = tk.StringVar(value="分辨率: - | 缩放: 100%")
+        tk.Label(
+            status_bar,
+            textvariable=self._view_info_var,
+            bg="#f0f0f0",
+            fg="#333333",
+            font=("Microsoft YaHei", 10),
+            anchor="w",
+            padx=8,
+        ).pack(fill=tk.BOTH, expand=True)
 
         # 分隔线
         ttk.Separator(content, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y)
@@ -113,3 +137,10 @@ class MainWindow(tk.Tk):
             return
         cropped = crop_image(image, left, top, width, height)
         self._right.update_selection(left, top, width, height, cropped)
+
+    def _on_view_changed(self, image_w, image_h, scale):
+        if image_w is None or image_h is None:
+            self._view_info_var.set("分辨率: - | 缩放: 100%")
+            return
+        zoom_percent = int(round(scale * 100))
+        self._view_info_var.set(f"分辨率: {image_w}*{image_h} | 缩放: {zoom_percent}%")
