@@ -10,8 +10,9 @@ from utils.image_utils import resize_to_fit
 class RightPanel(tk.Frame):
     """右侧信息面板：坐标显示、一键复制、选区预览、保存按钮"""
 
-    def __init__(self, parent):
+    def __init__(self, parent, on_test_coord_callback=None):
         super().__init__(parent, width=RIGHT_PANEL_WIDTH, bg="#f5f5f5")
+        self.on_test_coord_callback = on_test_coord_callback
         self.pack_propagate(False)
         self._cropped_image = None
         self._photo_image = None
@@ -78,6 +79,35 @@ class RightPanel(tk.Frame):
         )
         self._save_btn.pack(fill=tk.X, padx=14, pady=(0, 14))
 
+        ttk.Separator(self, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=14)
+
+        tk.Label(
+            self, text="选框坐标测试",
+            font=("Microsoft YaHei", 11, "bold"),
+            bg="#f5f5f5", fg="#333333", anchor="w",
+        ).pack(fill=tk.X, padx=14, pady=(10, 2))
+
+        tk.Label(
+            self,
+            text="输入格式：left,top,width,height",
+            font=("Microsoft YaHei", 9),
+            bg="#f5f5f5",
+            fg="#666666",
+            anchor="w",
+        ).pack(fill=tk.X, padx=14, pady=(0, 4))
+
+        self._test_coord_entry = ttk.Entry(self, state=tk.DISABLED)
+        self._test_coord_entry.pack(fill=tk.X, padx=14, pady=(0, 6))
+        self._test_coord_entry.bind("<Return>", lambda _e: self._confirm_test_coord())
+
+        self._test_coord_btn = ttk.Button(
+            self,
+            text="确认绘制测试选框",
+            command=self._confirm_test_coord,
+            state=tk.DISABLED,
+        )
+        self._test_coord_btn.pack(fill=tk.X, padx=14, pady=(0, 14))
+
     # ------------------------------------------------------------------
     # 公共接口
     # ------------------------------------------------------------------
@@ -97,6 +127,18 @@ class RightPanel(tk.Frame):
         # 启用按钮
         self._copy_btn.config(state=tk.NORMAL, text="一键复制坐标")
         self._save_btn.config(state=tk.NORMAL)
+
+    def set_image_loaded(self, loaded):
+        entry_state = tk.NORMAL if loaded else tk.DISABLED
+        button_state = tk.NORMAL if loaded else tk.DISABLED
+        self._test_coord_entry.config(state=entry_state)
+        self._test_coord_btn.config(state=button_state)
+
+    def _confirm_test_coord(self):
+        if self.on_test_coord_callback is None:
+            return
+        text = self._test_coord_entry.get().strip()
+        self.on_test_coord_callback(text)
 
     # ------------------------------------------------------------------
     # 内部方法

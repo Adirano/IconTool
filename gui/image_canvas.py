@@ -323,11 +323,7 @@ class ImageCanvas(tk.Frame):
             self._draw_selection_rect(None)
             return
 
-        self._selection_rect = (left, top, width, height)
-        self._draw_selection_rect(self._selection_rect)
-
-        if self.on_selection_callback:
-            self.on_selection_callback(left, top, width, height)
+        self.set_selection_rect(left, top, width, height, notify=True)
 
     # ------------------------------------------------------------------
     # 公共接口
@@ -347,6 +343,27 @@ class ImageCanvas(tk.Frame):
 
         self._redraw_image()
         self._notify_view_changed()
+
+    def set_selection_rect(self, left, top, width, height, notify=False):
+        if self.image is None:
+            return False
+
+        left = int(left)
+        top = int(top)
+        width = int(width)
+        height = int(height)
+
+        if left < 0 or top < 0 or width <= 0 or height <= 0:
+            return False
+        if left + width > self.image.width or top + height > self.image.height:
+            return False
+
+        self._selection_rect = (left, top, width, height)
+        self._draw_selection_rect(self._selection_rect)
+
+        if notify and self.on_selection_callback:
+            self.on_selection_callback(left, top, width, height)
+        return True
 
     def _redraw_image(self):
         self.canvas.delete("all")

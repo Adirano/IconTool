@@ -1,4 +1,5 @@
 import tkinter as tk
+import json
 from tkinter import ttk, filedialog, messagebox
 
 from config import APP_TITLE
@@ -95,7 +96,7 @@ class MainWindow(tk.Tk):
         ttk.Separator(content, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y)
 
         # 右侧面板（固定宽度）
-        self._right = RightPanel(content)
+        self._right = RightPanel(content, on_test_coord_callback=self._on_test_coord)
         self._right.pack(side=tk.RIGHT, fill=tk.Y)
 
     # ------------------------------------------------------------------
@@ -121,6 +122,7 @@ class MainWindow(tk.Tk):
         try:
             image = self._controller.load_from_file(path)
             self._canvas.show_image(image)
+            self._right.set_image_loaded(True)
         except Exception as exc:
             messagebox.showerror("打开失败", f"无法读取图片文件：\n{exc}")
 
@@ -128,8 +130,61 @@ class MainWindow(tk.Tk):
         image = self._controller.load_from_clipboard()
         if image is not None:
             self._canvas.show_image(image)
+            self._right.set_image_loaded(True)
         else:
             messagebox.showwarning("粘贴失败", "剪贴板中未检测到图片")
+
+    def _parse_test_rect(self, text):
+        if not text:
+            raise ValueError("请输入坐标，格式为 left,top,width,height")
+
+        try:
+            data = json.loads(text)
+            if isinstance(data, dict):
+                nums = [data["left"], data["top"], data["width"], data["height"]]
+            elif isinstance(data, (list, tuple)) and len(data) == 4:
+                nums = list(data)
+            else:
+                raise ValueError("JSON 坐标格式不正确")
+        except Exception:
+            parts = [part.strip() for part in text.replace("，", ",").split(",") if part.strip()]
+            if len(parts) != 4:
+                raise ValueError("坐标格式错误，请使用 left,top,width,height")
+            nums = parts
+
+        try:
+            left, top, width, height = (int(value) for value in nums)
+        except Exception as exc:
+            raise ValueError("坐标必须是整数") from exc
+
+        return left, top, width, height
+
+    def _validate_test_rect(self, left, top, width, height, image_w, image_h):
+        if left < 0 or top < 0:
+            raise ValueError("left 与 top 不能小于 0")
+        if width <= 0 or height <= 0:
+            raise ValueError("width 与 height 必须大于 0")
+        if left + width > image_w or top + height > image_h:
+            raise ValueError(
+                f"坐标越界：选框范围不能超过当前图片分辨率 {image_w}*{image_h}"
+            )
+
+    def _on_test_coord(self, text):
+        image = self._controller.get_current_image()
+        if image is None:
+            messagebox.showwarning("无法测试", "请先加载图片后再执行坐标测试")
+            return
+
+        try:
+            left, top, width, height = self._parse_test_rect(text)
+            self._validate_test_rect(left, top, width, height, image.width, image.height)
+        except ValueError as exc:
+            messagebox.showerror("坐标无效", str(exc))
+            return
+
+        ok = self._canvas.set_selection_rect(left, top, width, height, notify=True)
+        if not ok:
+            messagebox.showerror("坐标无效", "坐标无法应用到当前图片，请检查输入")
 
     def _on_selection(self, left, top, width, height):
         image = self._controller.get_current_image()
